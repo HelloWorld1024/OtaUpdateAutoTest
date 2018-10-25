@@ -1,0 +1,77 @@
+######配置te权限#########
+####方式一：###
+#1.
+#在aosp/system/sepolicy/增加对应te文件autoupdate.te，在dmesg日志中根据报的权限需求添加
+########################################################
+#sepolicy rules for autoupdate
+#######################################################
+type autoupdate, domain;
+type autoupdate_exec, exec_type, file_type;
+permissive  autoupdate;
+init_daemon_domain(autoupdate)
+
+allow autoupdate toolbox_exec:file { read open execute execute_no_trans getattr };
+allow autoupdate cache_file:dir { search };
+allow autoupdate cache_recovery_file:dir { search write };
+allow autoupdate storage_file:lnk_file { read };
+allow autoupdate shell_exec:file { read getattr };
+allow autoupdate system_data_file:file { getattr };
+allow autoupdate system_data_file:dir { getattr };
+allow autoupdate self:capability { dac_override sys_admin };
+allow autoupdate rootfs:dir { write add_name create };
+allow autoupdate system_file:file { execute_no_trans };
+allow autoupdate cache_file:dir { getattr };
+allow autoupdate tee_data_file:dir { getattr };
+allow autoupdate storage_file:dir { getattr };
+allow autoupdate media_rw_data_file:dir { getattr search read open write };
+allow autoupdate media_rw_data_file:file { getattr  read open write };
+allow autoupdate tmpfs:dir { write add_name create search };
+allow autoupdate mnt_user_file:dir { read search };
+allow autoupdate mnt_user_file:lnk_file { read } ;
+allow autoupdate sdcardfs:dir { search read open getattr };
+allow autoupdate sdcardfs:file { getattr read open };
+allow autoupdate autoupdate_exec:file { read open execute execute_no_trans getattr };
+
+#2.在system/sepolicy/file_contexts中添加context配置：
+/system/bin/autoupdate.sh        u:object_r:autoupdate_exec:s0
+
+
+####方式二：直接关闭selinux权限检查。
+#aosp/vendor/bootable/bootloader/lk/pratform/<project>/rules.mk
+#在N版本以后，关闭只能设置permissive,不能设置disable
+SELINUX_STATUS :=2
+
+
+
+
+######以上设置完te权限配置，需要设置开机自启动脚本
+##在aosp/system/core/rootdir/init.rc或者对应项目的rc文件中配置
+on property:sys.boot_completed=1
+    start autoupdate
+
+
+#service 启动配置视需求而定
+service autoupdate /system/bin/autoupdate.sh
+	class main
+	user root 
+	group root
+	disabled
+	onrestart
+	seclabel u:r:autoupdate:s0
+
+
+#######以上开机启动脚本配置完成##############
+
+
+##添加脚本到打包到system.img中
+##添加脚本文件到对应项目的分支中，同时在对应项目device.mk中添加：
+PRODUCT_COPY_FILES += device/along/along8167_tb_n/autoupdate.sh:system/bin/autoupdate.sh
+#视需求可放在system/bin中，也可放在vendor/bin.另vendor/bin/中sh最终仍然使用/system/bin/sh
+
+
+
+
+
+
+
+
